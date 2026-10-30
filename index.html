@@ -248,10 +248,11 @@ footer{color:var(--muted);font-size:12px;line-height:1.5;max-width:75ch}
 <script src="places.js"></script>
 <script>
 (function(){
-
-
-
-// walk time: straight line x1.35 for streets, 80 m/min, +2 min to leave the buildingconst HQ = window.LUNCH_HQ, MOODS = window.LUNCH_MOODS, P = window.LUNCH_PLACES;
+const HQ = window.LUNCH_HQ, MOODS = window.LUNCH_MOODS, P = window.LUNCH_PLACES;
+if (!HQ || !MOODS || !P) {
+  document.getElementById("rows").textContent = "Couldn't load places.js. Check that file for a typo (a missing comma or quote is the usual cause).";
+  return;
+}
 
 // walk time: straight line x1.35 for streets, 80 m/min, +2 min to leave the building
 function walkMin(p){
@@ -263,7 +264,7 @@ function walkMin(p){
 }
 P.forEach((p,i)=>{p.id=i;p.walk=walkMin(p);});
 
-const S={moods:new Set(),budget:"any",pace:"either",group:"small",walk:12,veg:false,openOnly:false,noRepeat:false,veto:new Set(),showAll:false,current:null};
+const S={moods:new Set(),budget:"any",pace:"either",group:"small",walk:12,veg:false,openOnly:false,noRepeat:false,veto:new Set(),showAll:false,current:null,note:""};
 
 // --- recent picks (this device only)
 function getRecent(){try{return JSON.parse(localStorage.getItem("mascot-lunch-recent")||"[]")}catch(e){return[]}}
@@ -422,9 +423,10 @@ function show(p,fromSpin){
   $("bStatus").textContent=(st.k==="open"?"BOARDING":st.t.toUpperCase());
   $("bStatus").className="status"+(st.k==="open"||st.k==="soon"?" go":"");
   $("board-t").textContent=fromSpin?"Now boarding":"Gate info";
-  $("bBlurb").textContent=p.b;$("bDir").href=dirURL(p);$("bActions").hidden=false;$("toast").textContent="";
+  $("bBlurb").textContent=p.b;$("bDir").href=dirURL(p);$("bActions").hidden=false;$("toast").textContent=S.note||"";S.note="";
+  if(fromSpin){const r=document.querySelector(".board").getBoundingClientRect();if(r.top>innerHeight*0.6||r.bottom<0)document.querySelector(".board").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});}
 }
-$("bVeto").onclick=()=>{if(!S.current)return;S.veto.add(S.current.id);$("toast").textContent=S.current.n+" vetoed for this session.";update();setTimeout(spin,250);};
+$("bVeto").onclick=()=>{if(!S.current)return;S.veto.add(S.current.id);S.note=S.current.n+" vetoed. Spinning again.";$("toast").textContent=S.note;update();setTimeout(spin,250);};
 $("bCopy").onclick=()=>{const p=S.current;if(!p)return;
   const txt=`Lunch today: ${p.n} (${p.c}), ${p.a}. About ${p.walk} min walk from Bourke Rd. Directions: ${dirURL(p)}`;
   const done=()=>{$("toast").textContent="Copied. Paste it in the lunch chat.";};

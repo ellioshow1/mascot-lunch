@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mascot Lunch Departures</title>
+<meta name="description" content="Spin-the-wheel lunch picker for Qantas HQ, Mascot. Pick a mood, spin, go.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%23F2B705'/%3E%3Cg fill='none' stroke='%23151A21' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 4v7a3 3 0 0 0 3 3v6M8 4v5M11 4v7a3 3 0 0 1-3 3M18 20V4c-2 1-3 4-3 7h3'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: airport departure-hall — controls + wheel on the left, a split-flap departures board and ranked list on the right; stacks on phones */
+:root{
+  --bg:#ECEFF2;
+  --surface:#FFFFFF;
+  --ink:#151A21;
+  --muted:#5A6573;
+  --line:#D3D9E0;
+  --sign:#F2B705;          /* airport wayfinding yellow */
+  --sign-ink:#151A21;
+  --slate:#4B6987;
+  --slate-2:#C5D0DB;
+  --board:#14181E;
+  --board-cell:#1E242C;
+  --board-text:#F5C518;
+  --board-dim:#7E8896;
+  --ok:#1F8A52;
+  --warn:#B4610B;
+  --chip:#F6F8FA;
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1318; --surface:#181D24; --ink:#E9EDF1; --muted:#9AA5B2; --line:#2B333D;
+    --sign:#F2B705; --sign-ink:#151A21; --slate:#6F8DAB; --slate-2:#33404E;
+    --board:#0A0D11; --board-cell:#161B22; --board-text:#F5C518; --board-dim:#6C7684;
+    --ok:#4CC584; --warn:#E89A45; --chip:#1F252D; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1318; --surface:#181D24; --ink:#E9EDF1; --muted:#9AA5B2; --line:#2B333D;
+  --sign:#F2B705; --sign-ink:#151A21; --slate:#6F8DAB; --slate-2:#33404E;
+  --board:#0A0D11; --board-cell:#161B22; --board-text:#F5C518; --board-dim:#6C7684;
+  --ok:#4CC584; --warn:#E89A45; --chip:#1F252D; color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+img{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(48px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:3px solid var(--ink);padding-bottom:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.glyph{width:44px;height:44px;background:var(--sign);color:var(--sign-ink);display:grid;place-items:center;border-radius:6px;flex:none}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,5vw,46px);line-height:.95;margin:0;letter-spacing:.01em;text-transform:uppercase;text-wrap:balance}
+.sub{color:var(--muted);font-size:14px;margin:4px 0 0}
+.clock{font-family:var(--mono);font-size:13px;color:var(--muted);text-align:right}
+.clock b{display:block;font-size:22px;color:var(--ink);font-weight:600}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:20px;align-items:start}
+@media (max-width:880px){.grid{grid-template-columns:1fr}}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+.label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+h2{font-family:var(--display);font-weight:800;font-size:26px;text-transform:uppercase;margin:0 0 4px;line-height:1}
+.hint{color:var(--muted);font-size:13px;margin:0}
+
+/* controls */
+.controls{display:flex;flex-direction:column;gap:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{appearance:none;border:1.5px solid var(--line);background:var(--chip);color:var(--ink);font:inherit;font-size:14px;font-weight:500;
+  padding:7px 12px;border-radius:999px;cursor:pointer;transition:background .15s,border-color .15s}
+.chip:hover{border-color:var(--slate)}
+.chip[aria-pressed="true"]{background:var(--sign);border-color:var(--sign);color:var(--sign-ink);font-weight:700}
+.chip:focus-visible,.btn:focus-visible,.seg button:focus-visible,input:focus-visible,.row:focus-visible,a:focus-visible{outline:3px solid var(--slate);outline-offset:2px}
+.twocol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.twocol{grid-template-columns:1fr}}
+.seg{display:flex;border:1.5px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{flex:1;appearance:none;border:0;background:var(--chip);color:var(--ink);font:inherit;font-size:13px;font-weight:500;padding:8px 4px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:700}
+.range{display:flex;align-items:center;gap:10px}
+.range input{flex:1;accent-color:var(--slate)}
+.range output{font-family:var(--mono);font-weight:600;min-width:62px;text-align:right}
+.toggles{display:flex;flex-wrap:wrap;gap:8px 18px}
+.toggles label{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer}
+.toggles input{width:18px;height:18px;accent-color:var(--slate)}
+
+/* wheel */
+.wheelbox{display:flex;flex-direction:column;align-items:center;gap:14px}
+.wheel{position:relative;width:min(100%,420px);aspect-ratio:1;max-width:100%}
+.wheel canvas{width:100%;height:100%;display:block}
+.pointer{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:16px solid transparent;border-right:16px solid transparent;border-top:28px solid var(--ink);filter:drop-shadow(0 2px 0 var(--sign));z-index:2}
+.hub{position:absolute;inset:0;margin:auto;width:20%;height:20%;border-radius:50%;background:var(--ink);color:var(--sign);display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:clamp(14px,3.6vw,20px);letter-spacing:.04em;border:4px solid var(--surface)}
+.btn{appearance:none;border:0;font:inherit;font-weight:700;cursor:pointer;border-radius:8px;padding:10px 16px;font-size:15px;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn-spin{background:var(--sign);color:var(--sign-ink);font-family:var(--display);font-size:26px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:12px 40px;box-shadow:0 4px 0 var(--ink)}
+.btn-spin:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn-spin:disabled{opacity:.5;cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--ink)}
+.count{font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center}
+
+/* departures board */
+.board{background:var(--board);border-radius:10px;padding:16px;color:var(--board-text);box-shadow:inset 0 0 0 1px #000}
+.board-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.board-head .t{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:.08em;color:#fff;text-transform:uppercase}
+.status{font-family:var(--mono);font-size:12px;font-weight:600;padding:3px 8px;border-radius:4px;background:var(--board-cell);color:var(--board-dim);letter-spacing:.08em}
+.status.go{background:var(--board-text);color:#14181E}
+.flaprow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:center;padding:7px 0;border-top:1px solid #262D36}
+.flaprow .k{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--board-dim)}
+.flaps{display:flex;flex-wrap:wrap;gap:2px;min-width:0}
+.flap{font-family:var(--mono);font-weight:600;font-size:clamp(13px,2.4vw,17px);background:var(--board-cell);min-width:1.05em;text-align:center;padding:3px 1px;border-radius:2px;line-height:1.2;position:relative}
+.flap::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:#0006}
+.flap.sp{background:transparent}
+.flap.sp::after{display:none}
+.dest .flap{font-size:clamp(16px,3.4vw,24px)}
+.board-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.board-actions .btn{background:var(--board-cell);color:#fff;border:1px solid #2E3641;font-size:14px}
+.board-actions .btn:hover{border-color:var(--board-text)}
+.board-actions .btn.primary{background:var(--board-text);color:#14181E;border-color:var(--board-text)}
+.blurb{color:#C9D1DA;font-size:14px;margin:12px 0 0;max-width:60ch}
+.toast{font-family:var(--mono);font-size:12px;color:var(--board-text);min-height:1.2em;margin-top:8px}
+
+/* ranked list */
+.listhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.rows{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 6px;border-top:1px solid var(--line);cursor:pointer;border-radius:6px;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;font:inherit;color:inherit;width:100%}
+.row:hover{background:var(--chip)}
+.row.out{opacity:.45}
+.fit{font-family:var(--mono);font-weight:600;font-size:15px;text-align:center;font-variant-numeric:tabular-nums}
+.fit small{display:block;font-size:9px;letter-spacing:.1em;color:var(--muted);font-weight:500}
+.rname{font-weight:700;font-size:15px;overflow-wrap:anywhere}
+.rmeta{color:var(--muted);font-size:13px}
+.bar{height:4px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden;max-width:220px}
+.bar i{display:block;height:100%;background:var(--slate)}
+.row.top .bar i{background:var(--sign)}
+.tag{font-family:var(--mono);font-size:11px;padding:2px 6px;border-radius:4px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
+.tag.open{color:var(--ok);border-color:currentColor}
+.tag.soon{color:var(--warn);border-color:currentColor}
+.tag.veto{color:var(--muted);text-decoration:line-through}
+.more{margin-top:10px}
+footer{color:var(--muted);font-size:12px;line-height:1.5;max-width:75ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="glyph" aria-hidden="true">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v8a3 3 0 0 0 3 3v7"/><path d="M7 3v6"/><path d="M10 3v8a3 3 0 0 1-3 3"/><path d="M17 21V3c-2.2 1.2-3.5 4-3.5 8h3.5"/></svg>
+      </div>
+      <div>
+        <h1>Lunch Departures</h1>
+        <p class="sub">Walkable lunch from Qantas HQ, 10 Bourke Rd, Mascot. Pick a mood, spin, go.</p>
+      </div>
+    </div>
+    <div class="clock" aria-live="off"><b id="clock">--:--</b><span id="day">Sydney</span></div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="panel controls" aria-labelledby="mood-h">
+        <div>
+          <p class="label" id="mood-h">What are you feeling like?</p>
+          <div class="chips" id="moods"></div>
+          <p class="hint" style="margin-top:8px">Pick one or a few. Pick none for a full lucky dip.</p>
+        </div>
+        <div class="twocol">
+          <div>
+            <p class="label">Budget</p>
+            <div class="seg" id="budget" role="group" aria-label="Budget"></div>
+          </div>
+          <div>
+            <p class="label">Time</p>
+            <div class="seg" id="pace" role="group" aria-label="Time"></div>
+          </div>
+          <div>
+            <p class="label">Group size</p>
+            <div class="seg" id="group" role="group" aria-label="Group size"></div>
+          </div>
+          <div>
+            <p class="label"><label for="walk">Max walk, one way</label></p>
+            <div class="range"><input type="range" id="walk" min="5" max="20" step="1" value="12"><output id="walkOut" for="walk">12 min</output></div>
+          </div>
+        </div>
+        <div class="toggles">
+          <label><input type="checkbox" id="veg"> Needs good veggo options</label>
+          <label><input type="checkbox" id="openOnly"> Open right now</label>
+          <label><input type="checkbox" id="noRepeat"> Skip my last 3 picks</label>
+        </div>
+      </section>
+
+      <section class="panel wheelbox" aria-label="Spin the wheel">
+        <div class="wheel">
+          <div class="pointer" aria-hidden="true"></div>
+          <canvas id="wheel" width="840" height="840" aria-label="Lunch wheel"></canvas>
+          <div class="hub" aria-hidden="true">LUNCH</div>
+        </div>
+        <button class="btn btn-spin" id="spin">Spin</button>
+        <p class="count" id="count"></p>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="board" aria-live="polite" aria-labelledby="board-t">
+        <div class="board-head">
+          <span class="t" id="board-t">Now boarding</span>
+          <span class="status" id="bStatus">AWAITING SPIN</span>
+        </div>
+        <div class="flaprow dest"><span class="k">DESTINATION</span><div class="flaps" id="fDest"></div></div>
+        <div class="flaprow"><span class="k">GATE</span><div class="flaps" id="fGate"></div></div>
+        <div class="flaprow"><span class="k">CUISINE</span><div class="flaps" id="fCuisine"></div></div>
+        <div class="flaprow"><span class="k">WALK</span><div class="flaps" id="fWalk"></div></div>
+        <div class="flaprow"><span class="k">FARE</span><div class="flaps" id="fFare"></div></div>
+        <p class="blurb" id="bBlurb">Set the mood on the left and hit Spin. Better matches get bigger slices of the wheel, so the odds lean your way without killing the surprise.</p>
+        <div class="board-actions" id="bActions" hidden>
+          <a class="btn primary" id="bDir" href="#" target="_blank" rel="noopener">Walking directions</a>
+          <button class="btn" id="bCopy" type="button">Copy for Teams</button>
+          <button class="btn" id="bVeto" type="button">Veto, spin again</button>
+        </div>
+        <p class="toast" id="toast"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="list-h">
+        <div class="listhead">
+          <h2 id="list-h">Ranked for you</h2>
+          <span class="hint" id="listCount"></span>
+        </div>
+        <div class="rows" id="rows"></div>
+        <button class="btn btn-ghost more" id="more" type="button">Show all</button>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    Walk times are estimates from the 10 Bourke Rd entrance, with two minutes added to get out of the building. Hours change, so check before a big group heads out. Vetoes reset when you reload; to add or fix a place, edit <code>places.js</code> in the repo. "Skip my last 3 picks" is remembered on your own device only.
+  </footer>
+</div>
+
+<script src="places.js"></script>
+<script>
+(function(){
+
+
+
+// walk time: straight line x1.35 for streets, 80 m/min, +2 min to leave the buildingconst HQ = window.LUNCH_HQ, MOODS = window.LUNCH_MOODS, P = window.LUNCH_PLACES;
+
+// walk time: straight line x1.35 for streets, 80 m/min, +2 min to leave the building
+function walkMin(p){
+  const R=6371000,toR=x=>x*Math.PI/180;
+  const dLat=toR(p.lat-HQ.lat),dLng=toR(p.lng-HQ.lng);
+  const a=Math.sin(dLat/2)**2+Math.cos(toR(HQ.lat))*Math.cos(toR(p.lat))*Math.sin(dLng/2)**2;
+  const d=2*R*Math.asin(Math.sqrt(a))*1.35;
+  return Math.max(3,Math.round(d/80)+2);
+}
+P.forEach((p,i)=>{p.id=i;p.walk=walkMin(p);});
+
+const S={moods:new Set(),budget:"any",pace:"either",group:"small",walk:12,veg:false,openOnly:false,noRepeat:false,veto:new Set(),showAll:false,current:null};
+
+// --- recent picks (this device only)
+function getRecent(){try{return JSON.parse(localStorage.getItem("mascot-lunch-recent")||"[]")}catch(e){return[]}}
+function pushRecent(n){try{const r=getRecent().filter(x=>x!==n);r.unshift(n);localStorage.setItem("mascot-lunch-recent",JSON.stringify(r.slice(0,3)))}catch(e){}}
+
+// --- time helpers
+function nowMins(){const d=new Date();return d.getHours()*60+d.getMinutes();}
+function toM(s){const[a,b]=s.split(":").map(Number);return a*60+b;}
+function fmt(s){let m=toM(s);if(m>=1439)return"late";let h=Math.floor(m/60),mm=m%60,ap=h>=12?"pm":"am";h=h%12||12;return h+(mm?":"+String(mm).padStart(2,"0"):"")+ap;}
+function hoursToday(p){const d=new Date().getDay();if(p.closed&&p.closed.includes(d))return null;return[p.h[0],(d===5&&p.fri)?p.fri:p.h[1]];}
+function openState(p){
+  const h=hoursToday(p);if(!h)return{k:"closed",t:"Closed today"};
+  const n=nowMins(),o=toM(h[0]),c=toM(h[1]);
+  if(n<o)return{k:"later",t:"Opens "+fmt(h[0])};
+  if(n>=c)return{k:"closed",t:"Closed now"};
+  if(c-n<=45)return{k:"soon",t:"Closes "+fmt(h[1])};
+  return{k:"open",t:c>=1439?"Open":"Open till "+fmt(h[1])};
+}
+
+// --- scoring (0–100)
+function score(p){
+  const out=r=>({p,s:0,out:r});
+  if(S.veto.has(p.id))return out("Vetoed");
+  if(p.walk>S.walk)return out("Too far");
+  if(S.veg&&!p.v)return out("Light on veggo");
+  const st=openState(p);
+  if(!hoursToday(p))return out("Closed today");
+  if(S.openOnly&&st.k!=="open"&&st.k!=="soon")return out(st.t);
+  if(S.noRepeat&&getRecent().includes(p.n))return out("Had it recently");
+  let s=0;const why=[];
+  // mood 40
+  if(S.moods.size===0){s+=40;}
+  else if(p.m.some(x=>S.moods.has(x))){s+=40;why.push("mood");}
+  else return out("Different mood");
+  // walk 25
+  s+=Math.round(25*Math.max(0,Math.min(1,(S.walk-p.walk)/(S.walk-3)))*0.6+25*0.4);
+  // budget 15
+  if(S.budget==="any")s+=15;else{const t={cheap:1,mid:2,treat:3}[S.budget],d=Math.abs(t-p.$);s+=d===0?15:d===1?6:0;}
+  // pace 10
+  if(S.pace==="either"||p.pace==="both"||p.pace===S.pace)s+=10;
+  // group 10
+  if(S.group==="small")s+=10;else if(p.g)s+=10;else s+=S.group==="mid"?4:0;
+  return{p,s:Math.min(100,s),out:null};
+}
+function ranked(){return P.map(score).sort((a,b)=>(!!a.out-!!b.out)||b.s-a.s||a.p.walk-b.p.walk);}
+function wheelSet(){
+  const r=ranked().filter(x=>!x.out);
+  return r.slice(0,10);
+}
+
+// --- controls
+const $=id=>document.getElementById(id);
+const moodsEl=$("moods");
+MOODS.forEach(([k,l])=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=l;b.setAttribute("aria-pressed","false");b.id="mood-"+k;
+  b.onclick=()=>{S.moods.has(k)?S.moods.delete(k):S.moods.add(k);b.setAttribute("aria-pressed",S.moods.has(k));update();};moodsEl.appendChild(b);});
+function seg(id,key,opts){const el=$(id);opts.forEach(([v,l])=>{const b=document.createElement("button");b.type="button";b.textContent=l;b.id=id+"-"+v;b.setAttribute("aria-pressed",S[key]===v);
+  b.onclick=()=>{S[key]=v;[...el.children].forEach(c=>c.setAttribute("aria-pressed",c===b));update();};el.appendChild(b);});}
+seg("budget","budget",[["any","Any"],["cheap","$"],["mid","$$"],["treat","$$$"]]);
+seg("pace","pace",[["either","Either"],["quick","Grab & go"],["sit","Sit down"]]);
+seg("group","group",[["small","1–3"],["mid","4–7"],["big","8+"]]);
+$("walk").oninput=e=>{S.walk=+e.target.value;$("walkOut").textContent=S.walk+" min";update();};
+["veg","openOnly","noRepeat"].forEach(k=>$(k).onchange=e=>{S[k]=e.target.checked;update();});
+$("more").onclick=()=>{S.showAll=!S.showAll;renderList();};
+
+// --- list
+const price=n=>"$".repeat(n);
+function renderList(){
+  const r=ranked(),rows=$("rows");rows.innerHTML="";
+  const ok=r.filter(x=>!x.out).length;
+  $("listCount").textContent=ok+" of "+P.length+" places fit";
+  const shown=S.showAll?r:r.slice(0,Math.max(8,Math.min(ok,10)));
+  shown.forEach((x,i)=>{
+    const p=x.p,st=openState(p),b=document.createElement("button");b.type="button";
+    b.className="row"+(x.out?" out":"")+(!x.out&&i<3?" top":"");
+    const tagCls=x.out?(S.veto.has(p.id)?"veto":""):(st.k==="open"?"open":st.k==="soon"||st.k==="later"?"soon":"");
+    const tagTxt=x.out?x.out:st.t;
+    b.innerHTML=`<div class="fit">${x.out?"–":x.s}<small>FIT</small></div>
+      <div><div class="rname"></div><div class="rmeta"></div><div class="bar"><i style="width:${x.out?0:x.s}%"></i></div></div>
+      <span class="tag ${tagCls}"></span>`;
+    b.querySelector(".rname").textContent=p.n;
+    b.querySelector(".rmeta").textContent=`${p.c} · ${p.walk} min · ${price(p.$)}`;
+    b.querySelector(".tag").textContent=tagTxt;
+    b.onclick=()=>show(p,false);
+    rows.appendChild(b);
+  });
+  $("more").textContent=S.showAll?"Show fewer":"Show all "+P.length;
+}
+
+// --- wheel
+const cv=$("wheel"),ctx=cv.getContext("2d");
+let rot=0,spinning=false,segs=[];
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function buildSegs(){
+  const w=wheelSet();const tot=w.reduce((a,x)=>a+Math.max(x.s,20),0);let a=0;
+  segs=w.map((x,i)=>{const sz=Math.max(x.s,20)/tot*Math.PI*2;const s={p:x.p,start:a,size:sz,ci:i%4};a+=sz;return s;});
+  if(segs.length>1&&segs[segs.length-1].ci===segs[0].ci)segs[segs.length-1].ci=(segs[0].ci+2)%4;
+}
+function draw(){
+  const W=cv.width,R=W/2-8,cx=W/2,cy=W/2;
+  const fills=[css("--sign"),css("--board"),css("--slate-2"),css("--slate")];
+  const inks=[css("--sign-ink"),css("--board-text"),css("--ink"),"#FFFFFF"];
+  ctx.clearRect(0,0,W,W);
+  ctx.save();ctx.translate(cx,cy);
+  // rim
+  ctx.beginPath();ctx.arc(0,0,R+6,0,Math.PI*2);ctx.fillStyle=css("--ink");ctx.fill();
+  if(!segs.length){ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);ctx.fillStyle=css("--chip");ctx.fill();
+    ctx.fillStyle=css("--muted");ctx.font="600 30px "+css("--body");ctx.textAlign="center";ctx.fillText("Nothing fits. Loosen a filter.",0,R*0.62);ctx.restore();return;}
+  ctx.rotate(rot);
+  segs.forEach(s=>{
+    ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,R,s.start-Math.PI/2,s.start+s.size-Math.PI/2);ctx.closePath();
+    ctx.fillStyle=fills[s.ci];ctx.fill();ctx.strokeStyle=css("--ink");ctx.lineWidth=3;ctx.stroke();
+    ctx.save();ctx.rotate(s.start+s.size/2-Math.PI/2);
+    ctx.fillStyle=inks[s.ci];ctx.textAlign="right";ctx.textBaseline="middle";
+    const fs=Math.max(18,Math.min(30,s.size*R*0.42));ctx.font=`700 ${fs}px ${css("--body")}`;
+    let t=s.p.n,maxW=R*0.66;while(ctx.measureText(t).width>maxW&&t.length>4)t=t.slice(0,-2);
+    if(t!==s.p.n)t=t.trim()+"…";
+    ctx.fillText(t,R-22,0);ctx.restore();
+  });
+  ctx.restore();
+}
+function updateWheel(){if(spinning)return;buildSegs();draw();
+  const n=segs.length;$("count").textContent=n?`${n} place${n>1?"s":""} on the wheel · bigger slice = better fit`:"Nothing on the wheel";
+  $("spin").disabled=!n;}
+
+function spin(){
+  if(spinning||!segs.length)return;
+  const total=segs.reduce((a,s)=>a+s.size,0);let r=Math.random()*total,pick=segs[0];
+  for(const s of segs){if(r<s.size){pick=s;break;}r-=s.size;}
+  const inside=pick.start+pick.size*(0.2+Math.random()*0.6);
+  const cur=((rot%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
+  let target=(Math.PI*2-inside)-cur;target=((target%(Math.PI*2))+Math.PI*2)%(Math.PI*2);
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const turns=reduce?0:(5+Math.floor(Math.random()*3))*Math.PI*2;
+  const from=rot,delta=target+turns,dur=reduce?1:4200,t0=performance.now();
+  spinning=true;$("spin").disabled=true;$("bStatus").textContent="SPINNING";$("bStatus").className="status";
+  const ease=t=>1-Math.pow(1-t,4);
+  (function step(t){const k=Math.min(1,(t-t0)/dur);rot=from+delta*ease(k);draw();
+    if(k<1)requestAnimationFrame(step);else{spinning=false;$("spin").disabled=false;pushRecent(pick.p.n);show(pick.p,true);}})(t0);
+}
+$("spin").onclick=spin;
+
+// --- board
+const CH="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$";
+function flapsTo(el,text,animate){
+  text=text.toUpperCase();el.innerHTML="";const cells=[];
+  for(const ch of text){const s=document.createElement("span");s.className="flap"+(ch===" "?" sp":"");s.textContent=ch===" "?" ":ch;el.appendChild(s);cells.push([s,ch]);}
+  if(!animate||matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  cells.forEach(([s,ch],i)=>{if(ch===" ")return;let n=4+Math.floor(Math.random()*6)+Math.floor(i/3);
+    const tick=()=>{if(n--<=0){s.textContent=ch;return;}s.textContent=CH[Math.floor(Math.random()*CH.length)];setTimeout(tick,45);};tick();});
+}
+function dirURL(p){return"https://www.google.com/maps/dir/?api=1&travelmode=walking&origin="+encodeURIComponent(HQ.addr)+"&destination="+encodeURIComponent(p.n+", "+p.a+", Mascot NSW");}
+function show(p,fromSpin){
+  S.current=p;const st=openState(p);
+  flapsTo($("fDest"),p.n,true);flapsTo($("fGate"),p.a,true);flapsTo($("fCuisine"),p.c,true);
+  flapsTo($("fWalk"),"~"+p.walk+" MIN",true);flapsTo($("fFare"),price(p.$)+(p.pace==="quick"?"  GRAB & GO":p.pace==="sit"?"  SIT DOWN":"  EITHER"),true);
+  $("bStatus").textContent=(st.k==="open"?"BOARDING":st.t.toUpperCase());
+  $("bStatus").className="status"+(st.k==="open"||st.k==="soon"?" go":"");
+  $("board-t").textContent=fromSpin?"Now boarding":"Gate info";
+  $("bBlurb").textContent=p.b;$("bDir").href=dirURL(p);$("bActions").hidden=false;$("toast").textContent="";
+}
+$("bVeto").onclick=()=>{if(!S.current)return;S.veto.add(S.current.id);$("toast").textContent=S.current.n+" vetoed for this session.";update();setTimeout(spin,250);};
+$("bCopy").onclick=()=>{const p=S.current;if(!p)return;
+  const txt=`Lunch today: ${p.n} (${p.c}), ${p.a}. About ${p.walk} min walk from Bourke Rd. Directions: ${dirURL(p)}`;
+  const done=()=>{$("toast").textContent="Copied. Paste it in the lunch chat.";};
+  const fallback=()=>{const ta=document.createElement("textarea");ta.value=txt;ta.setAttribute("readonly","");ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();
+    let ok=false;try{ok=document.execCommand("copy")}catch(e){}document.body.removeChild(ta);$("toast").textContent=ok?"Copied. Paste it in the lunch chat.":txt;};
+  try{navigator.clipboard.writeText(txt).then(done,fallback);}catch(e){fallback();}
+};
+
+// --- clock
+function tickClock(){const d=new Date();$("clock").textContent=d.toLocaleTimeString("en-AU",{hour:"numeric",minute:"2-digit"});
+  $("day").textContent=d.toLocaleDateString("en-AU",{weekday:"long"})+" · Mascot";}
+tickClock();setInterval(()=>{tickClock();},30000);
+
+function update(){renderList();updateWheel();}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>draw());
+new MutationObserver(()=>draw()).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(draw);
+update();
+flapsTo($("fDest"),"Where to?",false);flapsTo($("fGate"),"10 Bourke Rd",false);flapsTo($("fCuisine"),"TBC",false);flapsTo($("fWalk"),"--",false);flapsTo($("fFare"),"--",false);
+})();
+</script>
+</body>
+</html>
